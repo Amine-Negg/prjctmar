@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="mb-4">Mouvements de Stock</h1>
+
+<div class="card mb-3">
+    <div class="card-header bg-light">
+        <h5 class="mb-0">Filters</h5>
+    </div>
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('movements') }}">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label for="product" class="form-label">Product</label>
+                    <select class="form-select" id="product" name="product">
+                        <option value="">All Products</option>
+                        {% for product in products %}
+                            <option value="{{ product['name'] }}" 
+                                {% if current_filters.product == product['name'] %}selected{% endif %}>
+                                {{ product['name'] }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="movement_type" class="form-label">Type</label>
+                    <select class="form-select" id="movement_type" name="movement_type">
+                        <option value="">All Types</option>
+                        <option value="Entry" {% if current_filters.movement_type == 'Entry' %}selected{% endif %}>Entry</option>
+                        <option value="Exit" {% if current_filters.movement_type == 'Exit' %}selected{% endif %}>Exit</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="date_from" class="form-label">From Date</label>
+                    <input type="date" class="form-control" id="date_from" name="date_from" 
+                           value="{{ current_filters.date_from }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="date_to" class="form-label">To Date</label>
+                    <input type="date" class="form-control" id="date_to" name="date_to" 
+                           value="{{ current_filters.date_to }}">
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Produit</th>
+                        <th>Famille</th>
+                        <th>Catégorie</th>
+                        <th>Type</th>
+                        <th>Quantité</th>
+                        <th>Client</th>
+                        <th>Lot</th>
+                        <th>Sous-lot</th>
+                        <th>DPJ</th>
+                        <th>DLC</th>
+                        <th>État</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for movement in movements %}
+                    <tr>
+                        <td>{{ movement['date'][:16] }}</td>
+                        <td>{{ movement['product_name'] }}</td>
+                        <td>{{ movement['family'] }}</td>
+                        <td>{{ movement['category'] }}</td>
+                        <td>{{ movement['movement_type'] }}</td>
+                        <td>{{ movement['quantity'] }}</td>
+                        <td>{{ movement['customer_name'] if movement['customer_name'] else '-' }}</td>
+                        <td>{{ movement['batch'] }}</td>
+                        <td>{{ movement['sub_batch'] }}</td>
+                        <td>{{ movement['dpj'] }}</td>
+                        <td>{{ movement['best_before'][:10] }}</td>
+                        <td>
+                            <span class="badge bg-{{ get_alert_status(movement['best_before']) }}">
+                                {% if get_alert_status(movement['best_before']) == 'danger' %}
+                                    Expiré
+                                {% elif get_alert_status(movement['best_before']) == 'warning' %}
+                                    Bientôt
+                                {% else %}
+                                    Bon
+                                {% endif %}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

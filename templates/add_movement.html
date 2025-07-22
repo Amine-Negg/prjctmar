@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="mb-4">Add Stock Movement</h1>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('add_movement') }}">
+            <div class="mb-3">
+                <label for="product_id" class="form-label">Product</label>
+                <select class="form-select" id="product_id" name="product_id" required>
+                    <option value="">Select a product</option>
+                    {% for product in products %}
+                        <option value="{{ product['id'] }}">{{ product['name'] }} ({{ product['family'] }}, {{ product['category'] }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="mb-3">
+                <label for="quantity" class="form-label">Quantity</label>
+                <input type="number" class="form-control" id="quantity" name="quantity" min="1" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="movement_type" class="form-label">Movement Type</label>
+                <select class="form-select" id="movement_type" name="movement_type" required>
+                    <option value="Entry">Entry</option>
+                    <option value="Exit">Exit</option>
+                </select>
+            </div>
+            
+            <div class="mb-3" id="customer-field">
+                <label for="customer_id" class="form-label">Customer</label>
+                <select class="form-select" id="customer_id" name="customer_id">
+                    <option value="">Select a customer</option>
+                    {% for customer in customers %}
+                        <option value="{{ customer['id'] }}">{{ customer['name'] }}</option>
+                    {% endfor %}
+                </select>
+                <small class="text-muted">Nouveau client? <a href="{{ url_for('add_client') }}" target="_blank">Ajouter un client</a></small>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">Submit</button>
+            <a href="{{ url_for('movements') }}" class="btn btn-secondary">Cancel</a>
+        </form>
+    </div>
+</div>
+
+<script>
+document.getElementById('movement_type').addEventListener('change', function() {
+    const customerField = document.getElementById('customer-field');
+    if (this.value === 'Exit') {
+        customerField.style.display = 'block';
+        document.getElementById('customer_id').setAttribute('required', '');
+    } else {
+        customerField.style.display = 'none';
+        document.getElementById('customer_id').removeAttribute('required');
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Test des Calculs Automatiques</h1>
+<p>Date du jour: {{ today }}</p>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Catégorie</th>
+            <th>Type Mouvement</th>
+            <th>Numéro de Lot</th>
+            <th>Sous-lot</th>
+            <th>DPJ</th>
+            <th>DLC</th>
+            <th>État</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for result in results %}
+        <tr>
+            <td>{{ result.category }}</td>
+            <td>{{ result.movement_type }}</td>
+            <td>{{ result.batch }}</td>
+            <td>{{ result.sub_batch }}</td>
+            <td>{{ result.dpj }}</td>
+            <td>{{ result.best_before[:10] }}</td>
+            <td class="bg-{{ result.status }}">{{ result.status }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Détails du Client: {{ client['name'] }}</h1>
+        <div>
+            <a href="{{ url_for('export_client_pdf', client_id=client['id']) }}" class="btn btn-danger">
+                <i class="bi bi-file-pdf"></i> Exporter PDF
+            </a>
+            <a href="{{ url_for('manage_clients') }}" class="btn btn-secondary">Retour</a>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Résumé des Mouvements</h5>
+                    <table class="table table-bordered">
+                        <tr class="table-primary">
+                            <th>Total Entrées</th>
+                            <td class="text-end">{{ total_entry }}</td>
+                        </tr>
+                        <tr class="table-primary">
+                            <th>Total Sorties</th>
+                            <td class="text-end">{{ total_exit }}</td>
+                        </tr>
+                        <tr class="table-success">
+                            <th><strong>Solde</strong></th>
+                            <td class="text-end"><strong>{{ total_entry - total_exit }}</strong></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Historique des Mouvements</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Date</th>
+                            <th>Produit</th>
+                            <th>Famille</th>
+                            <th>Type</th>
+                            <th class="text-end">Quantité</th>
+                            <th>Lot</th>
+                            <th>DLC</th>
+                            <th>État</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for movement in movements %}
+                        <tr>
+                            <td>{{ movement['date'][:16] }}</td>
+                            <td>{{ movement['product_name'] }}</td>
+                            <td>{{ movement['family'] }}</td>
+                            <td>
+                                <span class="badge bg-{% if movement['movement_type'] == 'Entry' %}success{% else %}danger{% endif %}">
+                                    {{ movement['movement_type'] }}
+                                </span>
+                            </td>
+                            <td class="text-end">{{ movement['quantity'] }}</td>
+                            <td>{{ movement['batch'] }}</td>
+                            <td>{{ movement['best_before'][:10] }}</td>
+                            <td>
+                                <span class="badge bg-{{ get_alert_status(movement['best_before']) }}">
+                                    {% if get_alert_status(movement['best_before']) == 'danger' %}
+                                        Expiré
+                                    {% elif get_alert_status(movement['best_before']) == 'warning' %}
+                                        Bientôt
+                                    {% else %}
+                                        Bon
+                                    {% endif %}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

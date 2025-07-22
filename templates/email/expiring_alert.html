@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Expiring Products Alert</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; }
+        h2 { color: #f0ad4e; }
+        ul { list-style-type: none; padding: 0; }
+        li { padding: 8px 0; border-bottom: 1px solid #eee; }
+        .alert { background-color: #fff3cd; padding: 15px; border-radius: 4px; }
+        .btn { 
+            display: inline-block; 
+            padding: 10px 15px; 
+            background-color: #007bff; 
+            color: white; 
+            text-decoration: none; 
+            border-radius: 4px; 
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Expiring Products Alert</h2>
+    <p>The following products will expire in the next {{ days }} days:</p>
+    
+    <ul>
+        {% for item in items %}
+        <li>
+            <strong>{{ item.name }}</strong>: 
+            Expires on {{ item.best_before[:10] }} 
+            (in {{ "%.0f"|format(item.days_left) }} days)
+        </li>
+        {% endfor %}
+    </ul>
+    
+    <p>Please take appropriate action.</p>
+    
+    <a href="{{ url_for('dashboard', _external=True) }}" class="btn">
+        View Dashboard
+    </a>
+</body>
+</html>

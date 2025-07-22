@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Dashboard</h1>
+    
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card text-white bg-danger mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Out of Stock</h5>
+                    <h2 class="card-text">{{ inventory_summary['out_of_stock'] }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-warning mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Low Stock (< {{ threshold }})</h5>
+                    <h2 class="card-text">{{ inventory_summary['low_stock'] }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-success mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">In Stock</h5>
+                    <h2 class="card-text">{{ inventory_summary['in_stock'] }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Critical Inventory -->
+        <div class="col-md-6 mb-4">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">Critical Inventory (Stock < {{ threshold }})</h5>
+                </div>
+                <div class="card-body">
+                    {% if critical %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Family</th>
+                                    <th>Category</th>
+                                    <th>Quantity</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in critical %}
+                                <tr>
+                                    <td>{{ item['name'] }}</td>
+                                    <td>{{ item['family'] }}</td>
+                                    <td>{{ item['category'] }}</td>
+                                    <td class="text-danger fw-bold">{{ item['quantity'] }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-success">
+                        No critical inventory items
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Expiring Soon -->
+        <div class="col-md-6 mb-4">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-white">
+                    <h5 class="mb-0">Expiring Soon (≤{{ expiring_days }} days)</h5>
+                </div>
+                <div class="card-body">
+                    {% if expiring %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Family</th>
+                                    <th>Days Left</th>
+                                    <th>Expiry Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in expiring %}
+                                <tr>
+                                    <td>{{ item['name'] }}</td>
+                                    <td>{{ item['family'] }}</td>
+                                    <td class="fw-bold">{{ "%.0f"|format(item['days_left']) }}</td>
+                                    <td>{{ item['best_before'][:10] }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-success">
+                        No products expiring soon
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Movements -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Recent Movements</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Product</th>
+                            <th>Type</th>
+                            <th>Quantity</th>
+                            <th>Customer</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for movement in recent_movements %}
+                        <tr>
+                            <td>{{ movement['date'][:16] }}</td>
+                            <td>{{ movement['name'] }}</td>
+                            <td>
+                                <span class="badge bg-{% if movement['movement_type'] == 'Entry' %}success{% else %}danger{% endif %}">
+                                    {{ movement['movement_type'] }}
+                                </span>
+                            </td>
+                            <td>{{ movement['quantity'] }}</td>
+                            <td>{{ movement['customer_name'] or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

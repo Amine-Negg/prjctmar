@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Modifier Client: {{ client['name'] }}</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('edit_client', client_id=client['id']) }}">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Nom du Client</label>
+                            <input type="text" class="form-control" id="name" name="name" value="{{ client['name'] }}" required>
+                        </div>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="submit" class="btn btn-primary me-md-2">
+                                <i class="bi bi-save"></i> Mettre à jour
+                            </button>
+                            <a href="{{ url_for('manage_clients') }}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Annuler
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

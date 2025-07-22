@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1>Welcome, {{ session.username }} ({{ session.role }})</h1>
+    
+    <div class="row mt-4">
+        {% if session.role in ['admin', 'manager'] %}
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Stock Entry</h5>
+                    <a href="{{ url_for('add_movement') }}?type=Entry" class="btn btn-success btn-lg">
+                        ➕ Stock Entry
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Stock Exit</h5>
+                    <a href="{{ url_for('add_movement') }}?type=Exit" class="btn btn-danger btn-lg">
+                        ➖ Stock Exit
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Add these new dashboard and inventory buttons -->
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Dashboard</h5>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-info btn-lg">
+                        📊 Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Inventory</h5>
+                    <a href="{{ url_for('inventory_report') }}" class="btn btn-primary btn-lg">
+                        📦 Inventory
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12 mt-3">
+            <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                <a href="{{ url_for('movements') }}" class="btn btn-outline-secondary me-md-2">
+                    View All Movements
+                </a>
+                {% if session.role == 'admin' %}
+                <a href="{{ url_for('manage_users') }}" class="btn btn-outline-secondary me-md-2">
+                    Manage Users
+                </a>
+                <a href="{{ url_for('manage_products') }}" class="btn btn-outline-secondary me-md-2">
+                    Manage Products
+                </a>
+                <a href="{{ url_for('manage_clients') }}" class="btn btn-outline-secondary">
+                    Manage Clients
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

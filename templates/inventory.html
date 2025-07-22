@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="mb-4">Current Inventory</h1>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Family</th>
+                        <th>Category</th>
+                        <th>Quantity</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in inventory %}
+                    <tr>
+                        <td>{{ item['name'] }}</td>
+                        <td>{{ item['family'] }}</td>
+                        <td>{{ item['category'] }}</td>
+                        <td>{{ item['quantity'] }}</td>
+                        <td>
+                            <span class="badge bg-{% if item['quantity'] == 0 %}danger{% elif item['quantity'] < 10 %}warning{% else %}success{% endif %}">
+                                {% if item['quantity'] == 0 %}
+                                    Out of Stock
+                                {% elif item['quantity'] < 10 %}
+                                    Low Stock
+                                {% else %}
+                                    In Stock
+                                {% endif %}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
