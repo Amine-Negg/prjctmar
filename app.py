@@ -1,4 +1,3 @@
-from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -19,6 +18,7 @@ from reportlab.lib.units import inch
 from threading import Thread
 from flask_mail import Mail, Message
 
+# Initialize Flask app
 app = Flask(__name__)
 app.secret_key = 'your_secure_secret_key_here'
 
@@ -45,6 +45,11 @@ LOGO_PATH = Path(__file__).parent / "static" / "img" / "logo.png"
 # Ensure directories exist
 DATA_DIR.mkdir(exist_ok=True)
 BACKUP_DIR.mkdir(exist_ok=True)
+
+# Context processor to make current year available in templates
+@app.context_processor
+def inject_now():
+    return {'now': datetime.now()}
 
 # Database Context Manager
 @contextmanager
@@ -198,8 +203,8 @@ def calculate_dates(category, movement_type):
         bbd = date + timedelta(days=540)  # 18 months
     
     batch = date.strftime('%y') + ('E' if movement_type == 'Entry' else 'S') + str(date.isocalendar()[1]).zfill(2)
-    sub_batch = date.strftime('%y') + str(date.timetuple().tm_yday).zfill(3) + ('E' if movement_type == 'Entry' else 'S')
-    dpj = sub_batch
+    sub_batch = ""  # Will be entered manually now
+    dpj = ""  # Will use sub_batch value
     
     return {
         'best_before': bbd.isoformat(),
@@ -306,7 +311,7 @@ def manager_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# Initialize systems before first request
+# Initialize systems
 with app.app_context():
     init_db()
     init_excel_log()
@@ -474,6 +479,7 @@ def add_movement():
                 quantity = int(request.form['quantity'])
                 movement_type = request.form['movement_type']
                 customer_id = request.form.get('customer_id') or None
+                sub_batch = request.form['sub_batch']  # Get manually entered sub_batch
                 
                 product = conn.execute('SELECT * FROM products WHERE id = ?', (product_id,)).fetchone()
                 if not product:
@@ -490,7 +496,18 @@ def add_movement():
                         flash('Insufficient stock', 'danger')
                         return redirect(url_for('add_movement'))
                 
-                dates = calculate_dates(product['category'], movement_type)
+                # Generate batch information
+                date = datetime.now()
+                batch = date.strftime('%y') + ('E' if movement_type == 'Entry' else 'S') + str(date.isocalendar()[1]).zfill(2)
+                dpj = sub_batch  # Use sub_batch as DPJ
+                
+                # Calculate best before date based on product category
+                if product['category'] == 'VSM':
+                    bbd = date + timedelta(days=365)  # 12 months
+                elif product['category'] == 'Abats':
+                    bbd = date + timedelta(days=270)  # 9 months
+                else:  # Whole or Cut products
+                    bbd = date + timedelta(days=540)  # 18 months
                 
                 cursor = conn.execute('''
                 INSERT INTO movements (
@@ -499,10 +516,11 @@ def add_movement():
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
                     product_id, quantity, customer_id, movement_type,
-                    datetime.now().isoformat(), dates['best_before'], 
-                    dates['batch'], dates['sub_batch'], dates['dpj']
+                    date.isoformat(), bbd.isoformat(), 
+                    batch, sub_batch, dpj
                 ))
                 
+                # Update inventory
                 if movement_type == 'Entry':
                     conn.execute('''
                     INSERT INTO inventory (product_id, quantity)
@@ -528,7 +546,7 @@ def add_movement():
                 conn.commit()
                 update_excel_log(dict(movement))
                 check_inventory_alerts()
-                flash('Movement recorded', 'success')
+                flash('Movement recorded successfully', 'success')
                 return redirect(url_for('movements'))
         
         except Exception as e:

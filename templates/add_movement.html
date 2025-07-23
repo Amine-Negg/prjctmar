@@ -6,42 +6,52 @@
 <div class="card">
     <div class="card-body">
         <form method="POST" action="{{ url_for('add_movement') }}">
-            <div class="mb-3">
-                <label for="product_id" class="form-label">Product</label>
-                <select class="form-select" id="product_id" name="product_id" required>
-                    <option value="">Select a product</option>
-                    {% for product in products %}
-                        <option value="{{ product['id'] }}">{{ product['name'] }} ({{ product['family'] }}, {{ product['category'] }})</option>
-                    {% endfor %}
-                </select>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="product_id" class="form-label">Product</label>
+                    <select class="form-select" id="product_id" name="product_id" required>
+                        <option value="">Select a product</option>
+                        {% for product in products %}
+                            <option value="{{ product['id'] }}">{{ product['name'] }} ({{ product['family'] }}, {{ product['category'] }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <label for="quantity" class="form-label">Quantity</label>
+                    <input type="number" class="form-control" id="quantity" name="quantity" min="1" required>
+                </div>
             </div>
-            
-            <div class="mb-3">
-                <label for="quantity" class="form-label">Quantity</label>
-                <input type="number" class="form-control" id="quantity" name="quantity" min="1" required>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="movement_type" class="form-label">Movement Type</label>
+                    <select class="form-select" id="movement_type" name="movement_type" required>
+                        <option value="Entry">Entry (Stock In)</option>
+                        <option value="Exit">Exit (Stock Out)</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <label for="sub_batch" class="form-label">Sous-lot (Sub-batch)</label>
+                    <input type="text" class="form-control" id="sub_batch" name="sub_batch" required>
+                </div>
             </div>
-            
-            <div class="mb-3">
-                <label for="movement_type" class="form-label">Movement Type</label>
-                <select class="form-select" id="movement_type" name="movement_type" required>
-                    <option value="Entry">Entry</option>
-                    <option value="Exit">Exit</option>
-                </select>
-            </div>
-            
+
             <div class="mb-3" id="customer-field">
-                <label for="customer_id" class="form-label">Customer</label>
+                <label for="customer_id" class="form-label">Customer (for exits only)</label>
                 <select class="form-select" id="customer_id" name="customer_id">
                     <option value="">Select a customer</option>
                     {% for customer in customers %}
                         <option value="{{ customer['id'] }}">{{ customer['name'] }}</option>
                     {% endfor %}
                 </select>
-                <small class="text-muted">Nouveau client? <a href="{{ url_for('add_client') }}" target="_blank">Ajouter un client</a></small>
             </div>
-            
-            <button type="submit" class="btn btn-primary">Submit</button>
-            <a href="{{ url_for('movements') }}" class="btn btn-secondary">Cancel</a>
+
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <button type="submit" class="btn btn-primary me-md-2">Save Movement</button>
+                <a href="{{ url_for('movements') }}" class="btn btn-secondary">Cancel</a>
+            </div>
         </form>
     </div>
 </div>

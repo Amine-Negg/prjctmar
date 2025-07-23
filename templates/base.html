@@ -22,10 +22,6 @@
                         <a class="nav-link" href="{{ url_for('home') }}"><i class="bi bi-house"></i> Home</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('dashboard') }}"><i class="bi bi-speedometer2"></i>
-                            Dashboard</a>
-                    </li>
-                    <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('inventory_report') }}"><i class="bi bi-box-seam"></i>
                             Inventory</a>
                     </li>
@@ -36,24 +32,24 @@
                     {% if session.role in ['admin', 'manager'] %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('add_movement') }}?type=Entry"><i
-                                class="bi bi-plus-circle"></i> Stock Entry</a>
+                                class="bi bi-plus-circle"></i> Add Mouvement</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('add_movement') }}?type=Exit"><i
-                                class="bi bi-dash-circle"></i> Stock Exit</a>
+                                        <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('manage_clients') }}"><i class="bi bi-building"></i>
+                            Clients</a>
                     </li>
                     {% endif %}
                     {% if session.role == 'admin' %}
+                                        <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('dashboard') }}"><i class="bi bi-speedometer2"></i>
+                            Dashboard</a>
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('manage_users') }}"><i class="bi bi-people"></i> Users</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('manage_products') }}"><i class="bi bi-boxes"></i>
                             Products</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('manage_clients') }}"><i class="bi bi-building"></i>
-                            Clients</a>
                     </li>
                     {% endif %}
                     {% endif %}
