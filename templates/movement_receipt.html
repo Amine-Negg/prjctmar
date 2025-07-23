@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h3 class="mb-0">Movement Receipt</h3>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <p><strong>Receipt Number:</strong> {{ movement.id }}</p>
+                    <p><strong>Date:</strong> {{ movement.date[:16] }}</p>
+                </div>
+                <div class="col-md-6 text-end">
+                    <p><strong>Type:</strong> 
+                        <span class="badge bg-{% if movement.movement_type == 'Entry' %}success{% else %}danger{% endif %}">
+                            {{ movement.movement_type }}
+                        </span>
+                    </p>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Product</th>
+                            <th>Family</th>
+                            <th>Category</th>
+                            <th>Quantity</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>{{ movement.product_name }}</td>
+                            <td>{{ movement.family }}</td>
+                            <td>{{ movement.category }}</td>
+                            <td>{{ movement.quantity }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <p><strong>Batch:</strong> {{ movement.batch }}</p>
+                    <p><strong>Sub-batch:</strong> {{ movement.sub_batch }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>DPJ:</strong> {{ movement.dpj }}</p>
+                    <p><strong>Best Before:</strong> {{ movement.best_before[:10] }}</p>
+                </div>
+            </div>
+
+            {% if movement.customer_name %}
+            <div class="mt-3">
+                <p><strong>Customer:</strong> {{ movement.customer_name }}</p>
+            </div>
+            {% endif %}
+
+            <div class="mt-4">
+                <p class="text-muted">This is an automated receipt. Please keep it for your records.</p>
+            </div>
+
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                <a href="{{ url_for('movements') }}" class="btn btn-primary">Back to Movements</a>
+                <a href="{{ url_for('print_receipt', movement_id=movement.id) }}" class="btn btn-secondary">Print Receipt</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

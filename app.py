@@ -164,32 +164,71 @@ def init_excel_log():
         wb.save(str(EXCEL_LOG_PATH))
 
 def update_excel_log(movement):
-    wb = load_workbook(str(EXCEL_LOG_PATH))
-    ws = wb.active
-    
-    status = "Bon"
-    if get_alert_status(movement['best_before']) == 'danger':
-        status = "Expiré"
-    elif get_alert_status(movement['best_before']) == 'warning':
-        status = "Bientôt"
-    
-    ws.append([
-        movement['id'],
-        movement['date'][:16],
-        movement.get('product_name', ''),
-        movement.get('family', ''),
-        movement.get('category', ''),
-        movement['movement_type'],
-        movement['quantity'],
-        movement.get('customer_name', ''),
-        movement['batch'],
-        movement['sub_batch'],
-        movement['dpj'],
-        movement['best_before'][:10],
-        status
-    ])
-    
-    wb.save(str(EXCEL_LOG_PATH))
+    try:
+        # Create a temporary copy of the file
+        temp_path = EXCEL_LOG_PATH.with_name(f"temp_{EXCEL_LOG_PATH.name}")
+        
+        # If Excel file is locked, create a new workbook
+        if not EXCEL_LOG_PATH.exists() or not os.access(EXCEL_LOG_PATH, os.W_OK):
+            wb = Workbook()
+            ws = wb.active
+            ws.title = "Mouvements"
+            headers = [
+                "ID", "Date", "Produit", "Famille", "Catégorie", "Type",
+                "Quantité", "Client", "Lot", "Sous-lot", "DPJ", "DLC", "État"
+            ]
+            ws.append(headers)
+        else:
+            # Try to load the existing file
+            try:
+                wb = load_workbook(str(EXCEL_LOG_PATH))
+                ws = wb.active
+            except:
+                # If loading fails, create new workbook
+                wb = Workbook()
+                ws = wb.active
+                ws.title = "Mouvements"
+                headers = [
+                    "ID", "Date", "Produit", "Famille", "Catégorie", "Type",
+                    "Quantité", "Client", "Lot", "Sous-lot", "DPJ", "DLC", "État"
+                ]
+                ws.append(headers)
+        
+        # Determine status
+        status = "Bon"
+        if get_alert_status(movement['best_before']) == 'danger':
+            status = "Expiré"
+        elif get_alert_status(movement['best_before']) == 'warning':
+            status = "Bientôt"
+        
+        # Add the movement data
+        ws.append([
+            movement['id'],
+            movement['date'][:16],
+            movement.get('product_name', ''),
+            movement.get('family', ''),
+            movement.get('category', ''),
+            movement['movement_type'],
+            movement['quantity'],
+            movement.get('customer_name', ''),
+            movement['batch'],
+            movement['sub_batch'],
+            movement['dpj'],
+            movement['best_before'][:10],
+            status
+        ])
+        
+        # Save to temporary file first
+        wb.save(str(temp_path))
+        
+        # Rename temporary file to original (atomic operation)
+        if EXCEL_LOG_PATH.exists():
+            os.remove(str(EXCEL_LOG_PATH))
+        os.rename(str(temp_path), str(EXCEL_LOG_PATH))
+        
+    except Exception as e:
+        print(f"Error updating Excel log: {str(e)}")
+        # You might want to log this error properly
 
 # Helper Functions
 def calculate_dates(category, movement_type):
@@ -479,7 +518,7 @@ def add_movement():
                 quantity = int(request.form['quantity'])
                 movement_type = request.form['movement_type']
                 customer_id = request.form.get('customer_id') or None
-                sub_batch = request.form['sub_batch']  # Get manually entered sub_batch
+                sub_batch = request.form['sub_batch']
                 
                 product = conn.execute('SELECT * FROM products WHERE id = ?', (product_id,)).fetchone()
                 if not product:
@@ -499,15 +538,15 @@ def add_movement():
                 # Generate batch information
                 date = datetime.now()
                 batch = date.strftime('%y') + ('E' if movement_type == 'Entry' else 'S') + str(date.isocalendar()[1]).zfill(2)
-                dpj = sub_batch  # Use sub_batch as DPJ
+                dpj = sub_batch
                 
                 # Calculate best before date based on product category
                 if product['category'] == 'VSM':
-                    bbd = date + timedelta(days=365)  # 12 months
+                    bbd = date + timedelta(days=365)
                 elif product['category'] == 'Abats':
-                    bbd = date + timedelta(days=270)  # 9 months
-                else:  # Whole or Cut products
-                    bbd = date + timedelta(days=540)  # 18 months
+                    bbd = date + timedelta(days=270)
+                else:
+                    bbd = date + timedelta(days=540)
                 
                 cursor = conn.execute('''
                 INSERT INTO movements (
@@ -547,7 +586,7 @@ def add_movement():
                 update_excel_log(dict(movement))
                 check_inventory_alerts()
                 flash('Movement recorded successfully', 'success')
-                return redirect(url_for('movements'))
+                return redirect(url_for('view_receipt', movement_id=movement_id))
         
         except Exception as e:
             flash(f'Error: {str(e)}', 'danger')
@@ -558,6 +597,121 @@ def add_movement():
         customers = conn.execute('SELECT * FROM customers ORDER BY name').fetchall()
     
     return render_template('add_movement.html', products=products, customers=customers)
+
+@app.route('/receipt/<int:movement_id>')
+@login_required
+def view_receipt(movement_id):
+    with db_connection() as conn:
+        movement = conn.execute('''
+        SELECT m.*, p.name as product_name, p.family, p.category, c.name as customer_name
+        FROM movements m
+        LEFT JOIN products p ON m.product_id = p.id
+        LEFT JOIN customers c ON m.customer_id = c.id
+        WHERE m.id = ?
+        ''', (movement_id,)).fetchone()
+    
+    return render_template('movement_receipt.html', movement=movement)
+
+@app.route('/print_receipt/<int:movement_id>')
+@login_required
+def print_receipt(movement_id):
+    with db_connection() as conn:
+        movement = conn.execute('''
+        SELECT m.*, p.name as product_name, p.family, p.category, c.name as customer_name
+        FROM movements m
+        LEFT JOIN products p ON m.product_id = p.id
+        LEFT JOIN customers c ON m.customer_id = c.id
+        WHERE m.id = ?
+        ''', (movement_id,)).fetchone()
+
+    # Create PDF
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, 
+                          rightMargin=inch/2, leftMargin=inch/2,
+                          topMargin=inch/2, bottomMargin=inch/2)
+    elements = []
+    
+    # Styles
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'Title',
+        parent=styles['Heading1'],
+        alignment=1,
+        spaceAfter=20,
+        fontSize=16,
+        textColor=colors.HexColor('#2c3e50')
+    )
+    header_style = ParagraphStyle(
+        'Header',
+        parent=styles['Heading2'],
+        fontSize=12,
+        textColor=colors.white,
+        backColor=colors.HexColor('#4472C4'),
+        spaceAfter=10
+    )
+    normal_style = styles['Normal']
+    
+    # Add logo if exists
+    if LOGO_PATH.exists():
+        logo = Image(str(LOGO_PATH), width=1.5*inch, height=0.75*inch)
+        elements.append(logo)
+    
+    # Title and info
+    elements.append(Paragraph(f"<b>CONDIFRI MAROC</b>", title_style))
+    elements.append(Paragraph(f"Movement Receipt", title_style))
+    elements.append(Spacer(1, 0.2*inch))
+    elements.append(Paragraph(f"<b>Receipt #:</b> {movement['id']}", normal_style))
+    elements.append(Paragraph(f"<b>Date:</b> {movement['date'][:16]}", normal_style))
+    elements.append(Paragraph(f"<b>Type:</b> {movement['movement_type']}", normal_style))
+    elements.append(Spacer(1, 0.3*inch))
+    
+    # Movement details
+    elements.append(Paragraph("Movement Details", header_style))
+    
+    table_data = [
+        ["Product", movement['product_name']],
+        ["Family", movement['family']],
+        ["Category", movement['category']],
+        ["Quantity", movement['quantity']],
+        ["Batch", movement['batch']],
+        ["Sub-batch", movement['sub_batch']],
+        ["DPJ", movement['dpj']],
+        ["Best Before", movement['best_before'][:10]]
+    ]
+    
+    details_table = Table(table_data, colWidths=[2*inch, 3*inch])
+    details_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#F5F5F5')),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+        ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE')
+    ]))
+    elements.append(details_table)
+    
+    if movement['customer_name']:
+        elements.append(Spacer(1, 0.2*inch))
+        elements.append(Paragraph(f"<b>Customer:</b> {movement['customer_name']}", normal_style))
+    
+    # Footer
+    elements.append(Spacer(1, 0.3*inch))
+    elements.append(Paragraph("Condifri Maroc - Frozen Stock Management System", 
+                            ParagraphStyle(name='Footer', alignment=1, fontSize=8)))
+    
+    # Build PDF
+    doc.build(elements)
+    buffer.seek(0)
+    
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=f"movement_receipt_{movement['id']}.pdf",
+        mimetype='application/pdf'
+    )
+
 
 
 
@@ -644,6 +798,7 @@ def client_details(client_id):
                             total_entry=totals['total_entry'] or 0,
                             total_exit=totals['total_exit'] or 0,
                             get_alert_status=get_alert_status)
+    
 
 @app.route('/export_client_pdf/<int:client_id>')
 @login_required
