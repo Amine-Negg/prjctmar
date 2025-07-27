@@ -5,14 +5,39 @@
 
 <div class="card">
     <div class="card-body">
-        <form method="POST" action="{{ url_for('add_movement') }}">
+        <form method="POST" action="{{ url_for('add_movement') }}" id="movement-form">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="movement_type" class="form-label">Movement Type</label>
+                    <select class="form-select" id="movement_type" name="movement_type" required>
+                        <option value="">Select movement type</option>
+                        <option value="Entry">Entry (Stock In)</option>
+                        <option value="Exit">Exit (Stock Out)</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <label for="customer_id" class="form-label">Customer</label>
+                    <select class="form-select" id="customer_id" name="customer_id">
+                        <option value="">Select a customer (required for Exit)</option>
+                        {% for customer in customers %}
+                            <option value="{{ customer['id'] }}">{{ customer['name'] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label for="product_id" class="form-label">Product</label>
                     <select class="form-select" id="product_id" name="product_id" required>
                         <option value="">Select a product</option>
                         {% for product in products %}
-                            <option value="{{ product['id'] }}">{{ product['name'] }} ({{ product['family'] }}, {{ product['category'] }})</option>
+                            <option value="{{ product['id'] }}" 
+                                    data-family="{{ product['family'] }}"
+                                    data-category="{{ product['category'] }}">
+                                {{ product['name'] }} ({{ product['family'] }}, {{ product['category'] }})
+                            </option>
                         {% endfor %}
                     </select>
                 </div>
@@ -24,28 +49,20 @@
             </div>
 
             <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label for="movement_type" class="form-label">Movement Type</label>
-                    <select class="form-select" id="movement_type" name="movement_type" required>
-                        <option value="Entry">Entry (Stock In)</option>
-                        <option value="Exit">Exit (Stock Out)</option>
-                    </select>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Sous-lot (Auto-generated)</label>
+                    <input type="text" class="form-control" id="sub_batch" name="sub_batch" readonly>
+                    <small class="form-text text-muted">Format: AA-JJJ-C (ex: 24-195-P)</small>
                 </div>
-                
-                <div class="col-md-6 mb-3">
-                    <label for="sub_batch" class="form-label">Sous-lot (Sub-batch)</label>
-                    <input type="text" class="form-control" id="sub_batch" name="sub_batch" required>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Numéro de lot (Auto-generated)</label>
+                    <input type="text" class="form-control" id="batch" name="batch" readonly>
+                    <small class="form-text text-muted">Format: AA+C+SS-SS2 (ex: 24P28-29)</small>
                 </div>
-            </div>
-
-            <div class="mb-3" id="customer-field">
-                <label for="customer_id" class="form-label">Customer (for exits only)</label>
-                <select class="form-select" id="customer_id" name="customer_id">
-                    <option value="">Select a customer</option>
-                    {% for customer in customers %}
-                        <option value="{{ customer['id'] }}">{{ customer['name'] }}</option>
-                    {% endfor %}
-                </select>
+                <div class="col-md-4 mb-3">
+                    <label for="dpj" class="form-label">DPJ</label>
+                    <input type="text" class="form-control" id="dpj" name="dpj" readonly>
+                </div>
             </div>
 
             <div class="d-grid gap-2 d-md-flex justify-content-md-end">
@@ -57,15 +74,73 @@
 </div>
 
 <script>
-document.getElementById('movement_type').addEventListener('change', function() {
-    const customerField = document.getElementById('customer-field');
-    if (this.value === 'Exit') {
-        customerField.style.display = 'block';
-        document.getElementById('customer_id').setAttribute('required', '');
-    } else {
-        customerField.style.display = 'none';
-        document.getElementById('customer_id').removeAttribute('required');
+document.addEventListener('DOMContentLoaded', function() {
+    const movementType = document.getElementById('movement_type');
+    const customerSelect = document.getElementById('customer_id');
+    const productSelect = document.getElementById('product_id');
+    const subBatchField = document.getElementById('sub_batch');
+    const batchField = document.getElementById('batch');
+    const dpjField = document.getElementById('dpj');
+
+    // Update batch numbers when product changes
+    productSelect.addEventListener('change', function() {
+        updateBatchNumbers();
+    });
+
+    // Form validation
+    document.getElementById('movement-form').addEventListener('submit', function(e) {
+        if (movementType.value === 'Exit' && customerSelect.value === '') {
+            e.preventDefault();
+            alert('Please select a customer for stock exit movements');
+            customerSelect.focus();
+        }
+    });
+
+    function updateBatchNumbers() {
+        const selectedOption = productSelect.options[productSelect.selectedIndex];
+        const productName = selectedOption.text;
+        const now = new Date();
+        
+        // Get year (last 2 digits)
+        const yearShort = now.getFullYear().toString().slice(-2);
+        
+        // Calculate Julian day (1-365)
+        const start = new Date(now.getFullYear(), 0, 0);
+        const diff = now - start;
+        const oneDay = 1000 * 60 * 60 * 24;
+        const julianDay = Math.floor(diff / oneDay);
+        
+        // Determine product code
+        let productCode = 'X';
+        if (productName.toLowerCase().includes('poulet')) {
+            productCode = 'P';
+        } else if (productName.toLowerCase().includes('dinde')) {
+            productCode = 'D';
+        } else if (productName.toLowerCase().includes('boeuf')) {
+            productCode = 'B';
+        } else if (productName.toLowerCase().includes('agneau')) {
+            productCode = 'A';
+        }
+        
+        // Get week number
+        const weekNumber = getWeekNumber(now);
+        
+        // Update fields
+        subBatchField.value = `${yearShort}-${julianDay.toString().padStart(3, '0')}-${productCode}`;
+        batchField.value = `${yearShort}${productCode}${weekNumber}-${weekNumber+1}`;
+        dpjField.value = subBatchField.value;
     }
+
+    // Helper function to get ISO week number
+    function getWeekNumber(date) {
+        const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+        d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+    }
+
+    // Initialize fields on page load
+    updateBatchNumbers();
 });
 </script>
 {% endblock %}

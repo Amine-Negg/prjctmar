@@ -66,6 +66,7 @@
                         <th>DPJ</th>
                         <th>DLC</th>
                         <th>État</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -75,7 +76,11 @@
                         <td>{{ movement['product_name'] }}</td>
                         <td>{{ movement['family'] }}</td>
                         <td>{{ movement['category'] }}</td>
-                        <td>{{ movement['movement_type'] }}</td>
+                        <td>
+                            <span class="badge bg-{% if movement['movement_type'] == 'Entry' %}success{% else %}danger{% endif %}">
+                                {{ movement['movement_type'] }}
+                            </span>
+                        </td>
                         <td>{{ movement['quantity'] }}</td>
                         <td>{{ movement['customer_name'] if movement['customer_name'] else '-' }}</td>
                         <td>{{ movement['batch'] }}</td>
@@ -93,6 +98,24 @@
                                 {% endif %}
                             </span>
                         </td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a href="{{ url_for('view_receipt', movement_id=movement['id']) }}" 
+                                   class="btn btn-sm btn-info" title="View Receipt">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                {% if session.role in ['admin', 'manager'] %}
+                                <form action="{{ url_for('delete_movement', movement_id=movement['id']) }}" 
+                                      method="POST" style="display: inline;">
+                                    <button type="submit" class="btn btn-sm btn-danger" 
+                                            title="Delete Movement"
+                                            onclick="return confirm('Are you sure you want to delete this movement? This will update inventory accordingly.')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -100,4 +123,18 @@
         </div>
     </div>
 </div>
+
+<style>
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+    .table th, .table td {
+        vertical-align: middle;
+    }
+    .badge {
+        font-size: 0.85em;
+        padding: 0.35em 0.65em;
+    }
+</style>
 {% endblock %}

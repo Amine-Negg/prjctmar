@@ -228,12 +228,35 @@ def update_excel_log(movement):
         
     except Exception as e:
         print(f"Error updating Excel log: {str(e)}")
-        # You might want to log this error properly
 
-# Helper Functions
-def calculate_dates(category, movement_type):
+def calculate_dates(category, movement_type, product_name):
     date = datetime.now()
+    year_short = date.strftime('%y')  # Last 2 digits of year
     
+    # Calculate Julian day (1-365)
+    julian_day = date.timetuple().tm_yday
+    
+    # Determine product code based on product name
+    product_code = 'X'  # Default code
+    if 'poulet' in product_name.lower():
+        product_code = 'P'
+    elif 'dinde' in product_name.lower():
+        product_code = 'D'
+    elif 'boeuf' in product_name.lower():
+        product_code = 'B'
+    elif 'agneau' in product_name.lower():
+        product_code = 'A'
+    
+    # Sub-batch format: AA-JJJ-C
+    sub_batch = f"{year_short}-{julian_day:03d}-{product_code}"
+    
+    # Get current week number
+    week_number = date.isocalendar()[1]
+    
+    # Batch format: AA+C+SS-SS2
+    batch = f"{year_short}{product_code}{week_number}-{week_number+1}"
+    
+    # Calculate best before date based on category
     if category == 'VSM':
         bbd = date + timedelta(days=365)  # 12 months
     elif category == 'Abats':
@@ -241,15 +264,11 @@ def calculate_dates(category, movement_type):
     else:  # Whole or Cut products
         bbd = date + timedelta(days=540)  # 18 months
     
-    batch = date.strftime('%y') + ('E' if movement_type == 'Entry' else 'S') + str(date.isocalendar()[1]).zfill(2)
-    sub_batch = ""  # Will be entered manually now
-    dpj = ""  # Will use sub_batch value
-    
     return {
         'best_before': bbd.isoformat(),
         'batch': batch,
         'sub_batch': sub_batch,
-        'dpj': dpj
+        'dpj': sub_batch  # Using sub_batch for dpj
     }
 
 def get_alert_status(best_before_date):
@@ -518,7 +537,6 @@ def add_movement():
                 quantity = int(request.form['quantity'])
                 movement_type = request.form['movement_type']
                 customer_id = request.form.get('customer_id') or None
-                sub_batch = request.form['sub_batch']
                 
                 product = conn.execute('SELECT * FROM products WHERE id = ?', (product_id,)).fetchone()
                 if not product:
@@ -535,18 +553,8 @@ def add_movement():
                         flash('Insufficient stock', 'danger')
                         return redirect(url_for('add_movement'))
                 
-                # Generate batch information
-                date = datetime.now()
-                batch = date.strftime('%y') + ('E' if movement_type == 'Entry' else 'S') + str(date.isocalendar()[1]).zfill(2)
-                dpj = sub_batch
-                
-                # Calculate best before date based on product category
-                if product['category'] == 'VSM':
-                    bbd = date + timedelta(days=365)
-                elif product['category'] == 'Abats':
-                    bbd = date + timedelta(days=270)
-                else:
-                    bbd = date + timedelta(days=540)
+                # Generate batch information using new format
+                dates = calculate_dates(product['category'], movement_type, product['name'])
                 
                 cursor = conn.execute('''
                 INSERT INTO movements (
@@ -555,8 +563,8 @@ def add_movement():
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
                     product_id, quantity, customer_id, movement_type,
-                    date.isoformat(), bbd.isoformat(), 
-                    batch, sub_batch, dpj
+                    datetime.now().isoformat(), dates['best_before'], 
+                    dates['batch'], dates['sub_batch'], dates['dpj']
                 ))
                 
                 # Update inventory
@@ -712,9 +720,6 @@ def print_receipt(movement_id):
         mimetype='application/pdf'
     )
 
-
-
-
 # Client Routes
 @app.route('/manage_clients')
 @manager_required
@@ -771,6 +776,42 @@ def delete_client(client_id):
             flash(f'Erreur: {str(e)}', 'danger')
     return redirect(url_for('manage_clients'))
 
+@app.route('/delete_movement/<int:movement_id>', methods=['POST'])
+@manager_required
+def delete_movement(movement_id):
+    try:
+        with db_connection() as conn:
+            # Get movement details first
+            movement = conn.execute('''
+                SELECT * FROM movements WHERE id = ?
+            ''', (movement_id,)).fetchone()
+            
+            if not movement:
+                flash('Movement not found', 'danger')
+                return redirect(url_for('movements'))
+            
+            # Update inventory (reverse the movement)
+            if movement['movement_type'] == 'Entry':
+                conn.execute('''
+                    UPDATE inventory SET quantity = quantity - ?
+                    WHERE product_id = ?
+                ''', (movement['quantity'], movement['product_id']))
+            else:  # Exit movement
+                conn.execute('''
+                    UPDATE inventory SET quantity = quantity + ?
+                    WHERE product_id = ?
+                ''', (movement['quantity'], movement['product_id']))
+            
+            # Delete the movement
+            conn.execute('DELETE FROM movements WHERE id = ?', (movement_id,))
+            conn.commit()
+            
+            flash('Movement deleted successfully', 'success')
+    except Exception as e:
+        flash(f'Error deleting movement: {str(e)}', 'danger')
+    
+    return redirect(url_for('movements'))
+
 @app.route('/client/<int:client_id>')
 @login_required
 def client_details(client_id):
@@ -798,7 +839,6 @@ def client_details(client_id):
                             total_entry=totals['total_entry'] or 0,
                             total_exit=totals['total_exit'] or 0,
                             get_alert_status=get_alert_status)
-    
 
 @app.route('/export_client_pdf/<int:client_id>')
 @login_required
