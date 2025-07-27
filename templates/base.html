@@ -61,6 +61,12 @@
                             <i class="bi bi-person-circle"></i> {{ session.username }} ({{ session.role }})
                         </span>
                     </li>
+                    <!-- Add this to your navbar, near the logout button -->
+<li class="nav-item">
+    <a class="nav-link" href="{{ url_for('view_profile') }}">
+        <i class="bi bi-person-circle"></i> Profile
+    </a>
+</li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right"></i>
                             Logout</a>

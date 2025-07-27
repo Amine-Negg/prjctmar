@@ -17,6 +17,8 @@ from reportlab.lib import colors
 from reportlab.lib.units import inch
 from threading import Thread
 from flask_mail import Mail, Message
+from werkzeug.utils import secure_filename
+import os
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -116,6 +118,15 @@ def init_db():
             FOREIGN KEY (product_id) REFERENCES products (id)
         )''')
         
+        # Add this to your init_db() function
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS user_profiles (
+            user_id INTEGER PRIMARY KEY,
+            full_name TEXT,
+            email TEXT UNIQUE,
+            profile_picture TEXT,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )''')
         # Check if initial data needs to be added
         if conn.execute('SELECT COUNT(*) FROM users').fetchone()[0] == 0:
             # Initial admin user
@@ -421,6 +432,127 @@ def inventory_report():
     
     return render_template('inventory.html', inventory=inventory)
 
+@app.route('/profile')
+@login_required
+def view_profile():
+    with db_connection() as conn:
+        profile = conn.execute('''
+            SELECT u.id as user_id, u.username, u.role, p.full_name, p.email, p.profile_picture
+            FROM users u
+            LEFT JOIN user_profiles p ON u.id = p.user_id
+            WHERE u.id = ?
+        ''', (session['user_id'],)).fetchone()
+    return render_template('profile.html', profile=profile, user_id=session['user_id'])
+
+@app.route('/profile/edit', methods=['GET', 'POST'])
+@login_required
+def edit_profile():
+    if request.method == 'POST':
+        full_name = request.form.get('full_name')
+        email = request.form.get('email')
+        
+        # Handle file upload
+        profile_picture = None
+        if 'profile_picture' in request.files:
+            file = request.files['profile_picture']
+            if file.filename != '':
+                filename = secure_filename(file.filename)
+                profile_pic_path = os.path.join(app.root_path, 'static', 'profile_pics', filename)
+                file.save(profile_pic_path)
+                profile_picture = f'profile_pics/{filename}'
+        
+        with db_connection() as conn:
+            try:
+                conn.execute('''
+                    INSERT INTO user_profiles (user_id, full_name, email, profile_picture)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(user_id) DO UPDATE SET
+                    full_name = excluded.full_name,
+                    email = excluded.email,
+                    profile_picture = COALESCE(excluded.profile_picture, user_profiles.profile_picture)
+                ''', (session['user_id'], full_name, email, profile_picture))
+                conn.commit()
+                flash('Profile updated successfully', 'success')
+                return redirect(url_for('view_profile'))
+            except sqlite3.IntegrityError:
+                flash('Email already in use', 'danger')
+    
+    with db_connection() as conn:
+        profile = conn.execute('''
+            SELECT u.id as user_id, u.username, u.role, p.full_name, p.email, p.profile_picture
+            FROM users u
+            LEFT JOIN user_profiles p ON u.id = p.user_id
+            WHERE u.id = ?
+        ''', (session['user_id'],)).fetchone()
+    return render_template('edit_profile.html', profile=profile)
+
+@app.route('/profile/edit/<int:user_id>', methods=['GET', 'POST'])
+@admin_required  # Only admins can access this route
+def admin_edit_profile(user_id):
+    if request.method == 'POST':
+        full_name = request.form.get('full_name')
+        email = request.form.get('email')
+        role = request.form.get('role')
+        
+        # Handle file upload
+        profile_picture = None
+        if 'profile_picture' in request.files:
+            file = request.files['profile_picture']
+            if file.filename != '':
+                filename = secure_filename(file.filename)
+                profile_pic_path = os.path.join(app.root_path, 'static', 'profile_pics', filename)
+                file.save(profile_pic_path)
+                profile_picture = f'profile_pics/{filename}'
+        
+        with db_connection() as conn:
+            try:
+                # Update user profile
+                conn.execute('''
+                    INSERT INTO user_profiles (user_id, full_name, email, profile_picture)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(user_id) DO UPDATE SET
+                    full_name = excluded.full_name,
+                    email = excluded.email,
+                    profile_picture = COALESCE(excluded.profile_picture, user_profiles.profile_picture)
+                ''', (user_id, full_name, email, profile_picture))
+                
+                # Update user role if changed (admin only)
+                if role:
+                    conn.execute('UPDATE users SET role = ? WHERE id = ?', (role, user_id))
+                
+                conn.commit()
+                flash('Profile updated successfully', 'success')
+                return redirect(url_for('admin_view_profile', user_id=user_id))
+            except sqlite3.IntegrityError:
+                flash('Email already in use', 'danger')
+    
+    with db_connection() as conn:
+        profile = conn.execute('''
+            SELECT u.id, u.username, u.role, p.full_name, p.email, p.profile_picture
+            FROM users u
+            LEFT JOIN user_profiles p ON u.id = p.user_id
+            WHERE u.id = ?
+        ''', (user_id,)).fetchone()
+    return render_template('admin_edit_profile.html', profile=profile)
+
+@app.route('/profile/view/<int:user_id>')
+@manager_required
+def admin_view_profile(user_id):
+    with db_connection() as conn:
+        profile = conn.execute('''
+            SELECT u.id as user_id, u.username, u.role, p.full_name, p.email, p.profile_picture
+            FROM users u
+            LEFT JOIN user_profiles p ON u.id = p.user_id
+            WHERE u.id = ?
+        ''', (user_id,)).fetchone()
+        
+        if not profile:
+            flash('User not found', 'danger')
+            return redirect(url_for('manage_users'))
+    
+    return render_template('admin_view_profile.html', profile=profile, user_id=user_id)
+    
+    return render_template('admin_view_profile.html', profile=profile)
 @app.route('/dashboard')
 @manager_required
 def dashboard():

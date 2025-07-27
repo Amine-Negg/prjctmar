@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">User Profile</h3>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        {% if profile['profile_picture'] %}
+                            <img src="{{ url_for('static', filename=profile['profile_picture']) }}" 
+                                 class="rounded-circle" width="150" height="150">
+                        {% else %}
+                            <div class="bg-secondary rounded-circle d-inline-flex align-items-center justify-content-center" 
+                                 style="width: 150px; height: 150px;">
+                                <span class="text-white display-4">{{ profile['username'][0].upper() }}</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <h5>Username:</h5>
+                            <p class="text-muted">{{ profile['username'] }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Role:</h5>
+                            <p class="text-muted">{{ profile['role'] }}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <h5>Full Name:</h5>
+                            <p class="text-muted">{{ profile['full_name'] or 'Not set' }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Email:</h5>
+                            <p class="text-muted">{{ profile['email'] or 'Not set' }}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <a href="{{ url_for('edit_profile') }}" class="btn btn-primary">
+                            <i class="bi bi-pencil"></i> Edit Profile
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
