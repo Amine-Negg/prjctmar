@@ -59,11 +59,12 @@
                     <input type="text" class="form-control" id="batch" name="batch" readonly>
                     <small class="form-text text-muted">Format: AA+C+SS-SS2 (ex: 24P28-29)</small>
                 </div>
-                <div class="col-md-4 mb-3">
-                    <label for="dpj" class="form-label">DPJ</label>
-                    <input type="text" class="form-control" id="dpj" name="dpj" readonly>
-                </div>
-            </div>
+<!-- Replace the DPJ field in your form with this -->
+<div class="col-md-4 mb-3">
+    <label for="dpj" class="form-label">DPJ (Date de Production Journalière)</label>
+    <input type="text" class="form-control" id="dpj" name="dpj" required>
+    <small class="form-text text-muted">Format: JJ/MM/AAAA</small>
+</div>
 
             <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                 <button type="submit" class="btn btn-primary me-md-2">Save Movement</button>

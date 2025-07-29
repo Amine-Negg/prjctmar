@@ -214,21 +214,21 @@ def update_excel_log(movement):
         
         # Add the movement data
         ws.append([
-            movement['id'],
-            movement['date'][:16],
-            movement.get('product_name', ''),
-            movement.get('family', ''),
-            movement.get('category', ''),
-            movement['movement_type'],
-            movement['quantity'],
-            movement.get('customer_name', ''),
-            movement['batch'],
-            movement['sub_batch'],
-            movement['dpj'],
-            movement['best_before'][:10],
-            status
+        movement['id'],
+        movement['date'][:16],
+        movement.get('product_name', ''),
+        movement.get('family', ''),
+        movement.get('category', ''),
+        movement['movement_type'],
+        movement['quantity'],
+        movement.get('customer_name', ''),
+        movement['batch'],
+        movement['sub_batch'],
+        movement['dpj'],  # This will be the manually entered value
+        movement['best_before'][:10],
+        status
         ])
-        
+
         # Save to temporary file first
         wb.save(str(temp_path))
         
@@ -242,12 +242,12 @@ def update_excel_log(movement):
 
 def calculate_dates(category, movement_type, product_name):
     date = datetime.now()
-    year_short = date.strftime('%y')  # Last 2 digits of year
+    year_short = date.strftime('%y')
     
     # Calculate Julian day (1-365)
     julian_day = date.timetuple().tm_yday
     
-    # Determine product code based on product name
+    # Determine product code
     product_code = 'X'  # Default code
     if 'poulet' in product_name.lower():
         product_code = 'P'
@@ -279,7 +279,7 @@ def calculate_dates(category, movement_type, product_name):
         'best_before': bbd.isoformat(),
         'batch': batch,
         'sub_batch': sub_batch,
-        'dpj': sub_batch  # Using sub_batch for dpj
+        # DPJ is no longer calculated here
     }
 
 def get_alert_status(best_before_date):
@@ -669,6 +669,8 @@ def add_movement():
                 quantity = int(request.form['quantity'])
                 movement_type = request.form['movement_type']
                 customer_id = request.form.get('customer_id') or None
+                sub_batch = request.form['sub_batch']
+                dpj = request.form['dpj']  # Get manually entered DPJ
                 
                 product = conn.execute('SELECT * FROM products WHERE id = ?', (product_id,)).fetchone()
                 if not product:
@@ -685,7 +687,7 @@ def add_movement():
                         flash('Insufficient stock', 'danger')
                         return redirect(url_for('add_movement'))
                 
-                # Generate batch information using new format
+                # Generate batch information (without DPJ)
                 dates = calculate_dates(product['category'], movement_type, product['name'])
                 
                 cursor = conn.execute('''
@@ -696,8 +698,10 @@ def add_movement():
                 ''', (
                     product_id, quantity, customer_id, movement_type,
                     datetime.now().isoformat(), dates['best_before'], 
-                    dates['batch'], dates['sub_batch'], dates['dpj']
+                    dates['batch'], dates['sub_batch'], dpj  # Use manually entered DPJ
                 ))
+                
+                # Rest of your existing code...
                 
                 # Update inventory
                 if movement_type == 'Entry':
