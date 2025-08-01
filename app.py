@@ -138,10 +138,8 @@ def init_db():
             cursor.executemany('''
             INSERT INTO products (name, family, category) 
             VALUES (?, ?, ?)''', [
-                ('VSM de Poulet', 'Volaille', 'VSM'),
-                ('Abats de Boeuf', 'Boeuf', 'Abats'),
-                ('Agneau Entier', 'Agneau', 'Whole'),
-                ('Boeuf Découpé', 'Boeuf', 'Cut')
+                ('Poulet', 'Poulet', 'Whole'),
+                ('Dinde', 'Dinde', 'Whole')
             ])
             
             # Sample clients
